@@ -18,43 +18,40 @@ function ChessGame() {
   const [message, setMessage] = useState('');
   const [history, setHistory] = useState([]);
 
-  const createGame = () => {
-    socket.emit('createGame');
+  const createGame = async () => {
+    const response = await fetch('/api/createGame', { method: 'POST' });
+    const data = await response.json();
+    setGameId(data.gameId);
+    setMessage('Game created! Share this ID with your opponent.');
   };
 
-  const joinGame = () => {
-    socket.emit('joinGame', gameId);
+  const joinGame = async () => {
+    const response = await fetch(`/api/joinGame?gameId=${gameId}`, { method: 'POST' });
+    const data = await response.json();
+    if (data.error) {
+      setMessage(data.error);
+    } else {
+      setMessage('Joined game successfully!');
+    }
   };
 
-  const handleMove = (from, to) => {
-    socket.emit('move', { from, to });
+  const handleMove = async (from, to) => {
+    const response = await fetch('/api/move', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ gameId, from, to }),
+    });
+    const data = await response.json();
+    if (data.error) {
+      setMessage(data.error);
+    } else {
+      setBoard(data.board);
+      setHistory(data.history);
+      if (data.gameOver) {
+        setMessage(data.gameOver);
+      }
+    }
   };
-
-  useEffect(() => {
-    socket.on('gameCreated', (id) => {
-      setGameId(id);
-      setMessage('Game created! Share this ID with your opponent.');
-    });
-
-    socket.on('updateBoard', (newBoard) => {
-      setBoard(newBoard);
-    });
-
-    socket.on('error', (err) => {
-      setMessage(err);
-    });
-
-    socket.on('moveHistory', (moves) => {
-      setHistory(moves);
-    });
-
-    return () => {
-      socket.off('gameCreated');
-      socket.off('updateBoard');
-      socket.off('error');
-      socket.off('moveHistory');
-    };
-  }, []);
 
   return (
     <div style={{ textAlign: 'center' }}>
